@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "jevvy-metals": {
+      "url": "http://localhost:64551/mcp"
+    }
+  }
+}

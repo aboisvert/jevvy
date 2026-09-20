@@ -1,0 +1,7 @@
+.scala-build/
+.bsp/
+.metals/
+.vscode/settings.json
+.env
+
+out/
