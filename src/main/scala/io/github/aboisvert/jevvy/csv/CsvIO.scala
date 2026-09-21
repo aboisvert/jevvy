@@ -6,11 +6,11 @@ final case class CsvTable(headers: Seq[String], rows: Seq[Map[String, String]])
 
 object CsvIO:
 
-  /** Reads CSV row-by-row; `f` must fully consume `rows` before returning
-    * (reader closes after `f`).
+  /** Reads CSV row-by-row; `f` must fully consume `rows` before returning (reader closes after
+    * `f`).
     */
   def readRows[A](path: String)(
-      f: (headers: Seq[String], rows: Iterator[Map[String, String]]) => A
+    f: (headers: Seq[String], rows: Iterator[Map[String, String]]) => A
   ): Either[String, A] =
     try
       val reader = CSVReader.open(path)
@@ -19,16 +19,16 @@ object CsvIO:
         if !it.hasNext then Right(f(Nil, Iterator.empty))
         else
           val headers = it.next()
+          // zipAll: short rows get "" padding; extra CSV fields are dropped (no header key).
           val rows = it.map { fields => headers.zipAll(fields, "", "").toMap }
           Right(f(headers, rows))
       finally reader.close()
     catch case e: Exception => Left(s"cannot read CSV $path: ${e.getMessage}")
 
-  /** Writes the header once, then calls `f` with a row writer; closes the file
-    * after `f`.
+  /** Writes the header once, then calls `f` with a row writer; closes the file after `f`.
     */
   def writeRows[A](path: String, headers: Seq[String])(
-      f: ((fields: Seq[String]) => Unit) => A
+    f: ((fields: Seq[String]) => Unit) => A
   ): Either[String, A] =
     try
       val writer = CSVWriter.open(path)
@@ -48,7 +48,7 @@ object CsvIO:
           case Nil                   => Right(CsvTable(Nil, Nil))
           case headerRow :: dataRows =>
             val headers = headerRow
-            val rows = dataRows.map { fields =>
+            val rows    = dataRows.map { fields =>
               headers.zipAll(fields, "", "").toMap
             }
             Right(CsvTable(headers, rows))
@@ -56,9 +56,9 @@ object CsvIO:
     catch case e: Exception => Left(s"cannot read CSV $path: ${e.getMessage}")
 
   def write(
-      path: String,
-      headers: Seq[String],
-      rows: Seq[Seq[String]]
+    path: String,
+    headers: Seq[String],
+    rows: Seq[Seq[String]]
   ): Either[String, Unit] =
     try
       val writer = CSVWriter.open(path)
@@ -70,11 +70,12 @@ object CsvIO:
     catch case e: Exception => Left(s"cannot write CSV $path: ${e.getMessage}")
 
   def rowToState(row: Map[String, String]): io.github.ticofab.jev.Content =
+    // Sorted keys so the JSON state is stable regardless of map iteration order.
     val fields = row.toSeq.sortBy(_._1).map { case (k, v) => k -> ujson.Str(v) }
     io.github.ticofab.jev.Content.obj(fields*)
 
   def rowValuesInOrder(
-      headers: Seq[String],
-      row: Map[String, String]
+    headers: Seq[String],
+    row: Map[String, String]
   ): Seq[String] =
     headers.map(h => row.getOrElse(h, ""))

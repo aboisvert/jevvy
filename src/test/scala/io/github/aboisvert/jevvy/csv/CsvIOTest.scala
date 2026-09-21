@@ -22,7 +22,7 @@ class CsvIOTest extends FunSuite:
           .isRight
       )
       var rowsConsumed = 0
-      val onlyFirst =
+      val onlyFirst    =
         CsvIO.readRows(path) { (_, rows) =>
           val counted = rows.map { row =>
             rowsConsumed += 1
@@ -38,7 +38,7 @@ class CsvIOTest extends FunSuite:
     val path = Files.createTempFile("jevvy-roundtrip", ".csv").toString
     try
       val headers = Seq("a", "b")
-      val rows = Seq(Seq("1", "2"), Seq("3", "4"))
+      val rows    = Seq(Seq("1", "2"), Seq("3", "4"))
       assert(CsvIO.write(path, headers, rows).isRight)
       val table = CsvIO.read(path).getOrElse(fail("read failed"))
       assertEquals(table.headers, headers)

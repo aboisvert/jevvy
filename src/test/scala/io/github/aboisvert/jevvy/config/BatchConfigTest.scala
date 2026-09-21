@@ -37,7 +37,7 @@ class BatchConfigTest extends FunSuite:
          |    type: noul
          |    question: Is this spam?
          |""".stripMargin
-    val file = BatchConfig.loadFromString(yaml).getOrElse(fail("yaml parse failed"))
+    val file      = BatchConfig.loadFromString(yaml).getOrElse(fail("yaml parse failed"))
     val questions = BatchConfig.buildQuestions(file).getOrElse(fail("build failed"))
     questions.head match
       case _: Question.Noul => ()
@@ -55,7 +55,7 @@ class BatchConfigTest extends FunSuite:
          |      - label: hot
          |        description: High
          |""".stripMargin
-    val file = BatchConfig.loadFromString(yaml).getOrElse(fail("yaml parse failed"))
+    val file      = BatchConfig.loadFromString(yaml).getOrElse(fail("yaml parse failed"))
     val questions = BatchConfig.buildQuestions(file).getOrElse(fail("build failed"))
     questions.head match
       case _: Question.Score => ()
@@ -101,7 +101,8 @@ class BatchConfigTest extends FunSuite:
     assert(BatchConfig.buildQuestions(file).isLeft)
 
   test("loads bundled support-triage example"):
-    val file = BatchConfig.loadFromFile("examples/support-triage.yaml").getOrElse(fail("yaml parse failed"))
+    val file =
+      BatchConfig.loadFromFile("examples/support-triage.yaml").getOrElse(fail("yaml parse failed"))
     assertEquals(file.questions.head.name, "department")
     assertEquals(file.questions.head.`type`, "choice")
 
@@ -116,9 +117,11 @@ class BatchConfigTest extends FunSuite:
          |    type: noul
          |    question: Spam?
          |""".stripMargin
-    val file = BatchConfig.loadFromString(yaml).getOrElse(fail("yaml parse failed"))
+    val file   = BatchConfig.loadFromString(yaml).getOrElse(fail("yaml parse failed"))
     val loaded =
-      BatchConfig.resolve(file, Some(2), Some("cli-model"), testBaseConfig).getOrElse(fail("resolve failed"))
+      BatchConfig
+        .resolve(file, Some(2), Some("cli-model"), testBaseConfig)
+        .getOrElse(fail("resolve failed"))
     assertEquals(loaded.concurrency, 2)
     assertEquals(loaded.delayMs, 100L)
     assertEquals(loaded.jevConfig.model, "cli-model")

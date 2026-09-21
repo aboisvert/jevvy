@@ -10,7 +10,9 @@ object Main:
 
   def main(args: Array[String]): Unit =
     if args.isEmpty then
-      System.err.println("Usage: jevvy --input PATH [--config PATH] [--output PATH] [--concurrency N] [--model NAME]")
+      System.err.println(
+        "Usage: jevvy --input PATH [--config PATH] [--output PATH] [--concurrency N] [--model NAME]"
+      )
       System.err.println("Example:")
       System.err.println("  scala-cli run . -- --input examples/support-triage.csv")
       sys.exit(1)
@@ -23,21 +25,22 @@ object Main:
             |Appends flat result columns plus jev_error. Exit 1 if any row fails."""
   )
   def run(
-      @arg(doc = "Input CSV path") input: String,
-      @arg(doc = "Path to YAML config (default: input stem + .yaml)") config: Option[String] = None,
-      @arg(doc = "Output CSV path (default: input stem + -out.csv)") output: Option[String] = None,
-      @arg(doc = "Override YAML concurrency") concurrency: Option[Int] = None,
-      @arg(doc = "Override YAML model") model: Option[String] = None
+    @arg(doc = "Input CSV path") input: String,
+    @arg(doc = "Path to YAML config (default: input stem + .yaml)") config: Option[String] = None,
+    @arg(doc = "Output CSV path (default: input stem + -out.csv)") output: Option[String] = None,
+    @arg(doc = "Override YAML concurrency") concurrency: Option[Int] = None,
+    @arg(doc = "Override YAML model") model: Option[String] = None
   ): Unit =
+    // Fail before path/config work so missing TYPESAFE_API_KEY is reported immediately.
     JevConfig.fromEnv.left.foreach { err =>
       System.err.println(err.getMessage)
       sys.exit(1)
     }
     val (configPath, inputPath, outputPath) = BatchPaths.resolve(input, config, output)
-    val result =
+    val result                              =
       for
-        file <- BatchConfig.loadFromFile(configPath)
-        loaded <- BatchConfig.resolve(file, concurrency, model)
+        file        <- BatchConfig.loadFromFile(configPath)
+        loaded      <- BatchConfig.resolve(file, concurrency, model)
         batchResult <- BatchRunner.run(loaded, inputPath, outputPath)
       yield batchResult
 

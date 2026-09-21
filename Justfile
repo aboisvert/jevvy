@@ -29,6 +29,10 @@ example-lead-scoring:
 test:
     scala-cli test .
 
+# Reformat all Scala sources (main and test) with scalafmt
+fmt:
+    scala-cli fmt .
+
 # Build GraalVM native binary at out/jevvy (slow; downloads Oracle GraalVM via Coursier).
 # Override JVM: GRAALVM_JVM_ID=system just native, or `just native graal_jvm_id=system`
 native graal_jvm_id=env_var_or_default('GRAALVM_JVM_ID', ''):

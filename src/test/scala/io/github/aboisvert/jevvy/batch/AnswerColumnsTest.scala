@@ -7,7 +7,7 @@ import munit.FunSuite
 class AnswerColumnsTest extends FunSuite:
 
   private val isUrgent = Question.noul("is_urgent", "Urgent?")
-  private val dept = Question.choice(
+  private val dept     = Question.choice(
     "department",
     "Team?",
     "billing"   -> "Payments",
@@ -42,7 +42,7 @@ class AnswerColumnsTest extends FunSuite:
     assertEquals(fields.last, "rate limited")
 
   test("valuesForSuccess extracts noul probability"):
-    val body = JevResponseFixtures.bodyForNoul("is_urgent", 0.75)
+    val body     = JevResponseFixtures.bodyForNoul("is_urgent", 0.75)
     val response = JevResponseFixtures.parse(body, Seq(isUrgent)).getOrElse(fail("parse failed"))
     assertEquals(
       AnswerColumns.valuesForSuccess(response, Seq(isUrgent)),
@@ -63,13 +63,15 @@ class AnswerColumnsTest extends FunSuite:
     )
 
   test("valuesForSuccess extracts score and nearest label"):
-    val body = JevResponseFixtures.bodyForScore("sales_readiness", 1.6, 0 -> 0.1, 1 -> 0.3, 2 -> 0.6)
+    val body =
+      JevResponseFixtures.bodyForScore("sales_readiness", 1.6, 0 -> 0.1, 1 -> 0.3, 2 -> 0.6)
     val response = JevResponseFixtures.parse(body, Seq(readiness)).getOrElse(fail("parse failed"))
-    val fields = AnswerColumns.valuesForSuccess(response, Seq(readiness)).getOrElse(fail("expected success"))
+    val fields   =
+      AnswerColumns.valuesForSuccess(response, Seq(readiness)).getOrElse(fail("expected success"))
     assertEquals(fields.head, "1.6000")
     assertEquals(fields(1), "hot")
 
   test("valuesForSuccess fails when answer missing"):
-    val body = JevResponseFixtures.bodyForNoul("is_urgent", 0.5)
+    val body     = JevResponseFixtures.bodyForNoul("is_urgent", 0.5)
     val response = JevResponseFixtures.parse(body, Seq(isUrgent)).getOrElse(fail("parse failed"))
     assert(AnswerColumns.valuesForSuccess(response, Seq(isUrgent, dept)).isLeft)

@@ -11,27 +11,27 @@ final case class ChoiceOptionYaml(id: String, description: String) derives YamlC
 final case class ScoreLevelYaml(label: String, description: String) derives YamlCodec
 
 final case class QuestionYaml(
-    name: String,
-    `type`: String,
-    question: String,
-    options: Option[List[ChoiceOptionYaml]] = None,
-    levels: Option[List[ScoreLevelYaml]] = None
+  name: String,
+  `type`: String,
+  question: String,
+  options: Option[List[ChoiceOptionYaml]] = None,
+  levels: Option[List[ScoreLevelYaml]] = None
 ) derives YamlCodec
 
 final case class BatchConfigFile(
-    model: Option[String] = None,
-    timeout_seconds: Option[Int] = None,
-    concurrency: Option[Int] = None,
-    delay_ms: Option[Long] = None,
-    questions: List[QuestionYaml]
+  model: Option[String] = None,
+  timeout_seconds: Option[Int] = None,
+  concurrency: Option[Int] = None,
+  delay_ms: Option[Long] = None,
+  questions: List[QuestionYaml]
 ) derives YamlCodec
 
 /** Resolved settings and SDK question values ready for execution. */
 final case class LoadedBatchConfig(
-    jevConfig: JevConfig,
-    concurrency: Int,
-    delayMs: Long,
-    questions: Seq[Question]
+  jevConfig: JevConfig,
+  concurrency: Int,
+  delayMs: Long,
+  questions: Seq[Question]
 )
 
 object BatchConfig:
@@ -54,8 +54,11 @@ object BatchConfig:
             buildQuestion(q).map(_ :: qs)
           }
         }
-        .map(_.reverse)
+        .map(_.reverse) // fold prepends; YAML list order is preserved in output columns
 
+  /** Runs SDK validation (e.g. choice option keys) without calling the API. State is irrelevant for
+    * that check.
+    */
   private def validateQuestion(question: Question): Either[String, Question] =
     JevRequest(Content.text(""), Seq(question)).validate.left.map(_.getMessage).map(_ => question)
 
@@ -68,6 +71,7 @@ object BatchConfig:
           case None | Some(Nil) =>
             Left(s"choice question '${q.name}' requires non-empty options")
           case Some(opts) =>
+            // id is both API key and display id; description is separate Content for the model.
             val built = opts.map(o => ChoiceOption(o.id, o.id, Some(Content.text(o.description))))
             validateQuestion(Question.Choice(q.name, q.question, built))
       case "score" =>
@@ -83,39 +87,39 @@ object BatchConfig:
         Left(s"question '${q.name}' has unknown type '$other' (expected noul, choice, or score)")
 
   def resolve(
-      file: BatchConfigFile,
-      cliConcurrency: Option[Int],
-      cliModel: Option[String]
+    file: BatchConfigFile,
+    cliConcurrency: Option[Int],
+    cliModel: Option[String]
   ): Either[String, LoadedBatchConfig] =
     resolve(file, cliConcurrency, cliModel, JevConfig.fromEnv.left.map(_.getMessage))
 
   private[jevvy] def resolve(
-      file: BatchConfigFile,
-      cliConcurrency: Option[Int],
-      cliModel: Option[String],
-      baseConfig: Either[String, JevConfig]
+    file: BatchConfigFile,
+    cliConcurrency: Option[Int],
+    cliModel: Option[String],
+    baseConfig: Either[String, JevConfig]
   ): Either[String, LoadedBatchConfig] =
     for
-      questions <- buildQuestions(file)
-      config <- baseConfig
-      jevConfig = applyConfigOverrides(config, file, cliModel)
+      questions  <- buildQuestions(file)
+      config     <- baseConfig
+      jevConfig   = applyConfigOverrides(config, file, cliModel)
       concurrency = cliConcurrency.orElse(file.concurrency).getOrElse(1)
-      _ <-
+      _          <-
         if concurrency < 1 then Left("concurrency must be at least 1")
         else Right(())
       delayMs = file.delay_ms.getOrElse(0L)
-      _ <-
+      _      <-
         if delayMs < 0 then Left("delay_ms must be non-negative")
         else Right(())
     yield LoadedBatchConfig(jevConfig, concurrency, delayMs, questions)
 
   private def applyConfigOverrides(
-      base: JevConfig,
-      file: BatchConfigFile,
-      cliModel: Option[String]
+    base: JevConfig,
+    file: BatchConfigFile,
+    cliModel: Option[String]
   ): JevConfig =
     var c = base
     file.model.foreach(m => c = c.withModel(m))
     file.timeout_seconds.foreach(s => c = c.withTimeout(s.seconds))
-    cliModel.foreach(m => c = c.withModel(m))
+    cliModel.foreach(m => c = c.withModel(m)) // CLI wins over YAML when both set
     c

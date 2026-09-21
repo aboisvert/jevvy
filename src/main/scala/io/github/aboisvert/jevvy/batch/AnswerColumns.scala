@@ -4,6 +4,9 @@ import io.github.ticofab.jev._
 
 object AnswerColumns:
 
+  /** Last output column: empty on success, API/parse message on failure. BatchRunner counts
+    * failures from this cell.
+    */
   val ErrorColumn: String = "jev_error"
 
   def extraHeaders(questions: Seq[Question]): Seq[String] =
@@ -18,21 +21,24 @@ object AnswerColumns:
       case q: Question.Score =>
         Seq(s"${q.name}_score", s"${q.name}_nearest_label")
 
+  /** One flat cell group per question, in config order. Does not include `ErrorColumn`; caller
+    * appends `""` or uses `valuesForError`.
+    */
   def valuesForSuccess(
-      response: JevResponse,
-      questions: Seq[Question]
+    response: JevResponse,
+    questions: Seq[Question]
   ): Either[String, Seq[String]] =
-    questions.foldLeft(Right(Seq.empty[String]): Either[String, Seq[String]]) {
-      (acc, q) =>
-        acc.flatMap(fields => fieldsForQuestion(response, q).map(fields ++ _))
+    questions.foldLeft(Right(Seq.empty[String]): Either[String, Seq[String]]) { (acc, q) =>
+      acc.flatMap(fields => fieldsForQuestion(response, q).map(fields ++ _))
     }
 
   private def fieldsForQuestion(
-      response: JevResponse,
-      q: Question
+    response: JevResponse,
+    q: Question
   ): Either[String, Seq[String]] =
     q match
       case n: Question.Noul =>
+        // Lookup is keyed by Question instance (name + type), not the string name alone.
         response.answers.get(n).toRight(missing(n.name)).map { a =>
           Seq(f"${a.probability.value}%.4f")
         }
@@ -45,6 +51,9 @@ object AnswerColumns:
           Seq(f"${a.score}%.4f", a.nearestLabel)
         }
 
+  /** Same width as a success row (`extraHeaders` columns): blanks for answer cells, message in the
+    * error slot.
+    */
   def valuesForError(questions: Seq[Question], message: String): Seq[String] =
     val blank = questions.flatMap(q => headerNamesFor(q).map(_ => ""))
     blank :+ message
