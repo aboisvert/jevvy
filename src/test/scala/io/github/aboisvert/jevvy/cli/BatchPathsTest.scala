@@ -1,4 +1,5 @@
-import cli.BatchPaths
+package io.github.aboisvert.jevvy.cli
+
 import munit.FunSuite
 
 class BatchPathsTest extends FunSuite:

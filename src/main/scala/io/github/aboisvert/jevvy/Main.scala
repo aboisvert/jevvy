@@ -1,6 +1,8 @@
-import batch.BatchRunner
-import cli.BatchPaths
-import config.BatchConfig
+package io.github.aboisvert.jevvy
+
+import io.github.aboisvert.jevvy.batch.BatchRunner
+import io.github.aboisvert.jevvy.cli.BatchPaths
+import io.github.aboisvert.jevvy.config.BatchConfig
 import mainargs.{arg, main, ParserForMethods}
 
 object Main:

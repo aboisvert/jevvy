@@ -1,7 +1,7 @@
-package batch
+package io.github.aboisvert.jevvy.batch
 
-import config.LoadedBatchConfig
-import csv.{CsvIO, CsvTable}
+import io.github.aboisvert.jevvy.config.LoadedBatchConfig
+import io.github.aboisvert.jevvy.csv.{CsvIO, CsvTable}
 import io.github.ticofab.jev._
 import sttp.client4.DefaultFutureBackend
 
@@ -22,7 +22,6 @@ object BatchRunner:
 
     for
       table <- CsvIO.read(inputPath)
-      outHeaders = table.headers ++ AnswerColumns.extraHeaders(config.questions)
       backend = DefaultFutureBackend()
       client <-
         try JevClient.create(backend, config.jevConfig).left.map(_.getMessage)
@@ -31,17 +30,17 @@ object BatchRunner:
             backend.close()
             Left(e.getMessage)
       result <-
-        try processAll(client, config, table, outHeaders, outputPath)
+        try runWith(config, table, outputPath, req => client.run(req))
         finally backend.close()
     yield result
 
-  private def processAll(
-      client: JevClient[Future],
+  private[jevvy] def runWith(
       config: LoadedBatchConfig,
       table: CsvTable,
-      outHeaders: Seq[String],
-      outputPath: String
+      outputPath: String,
+      runRequest: JevRequest => Future[Either[JevError, JevResponse]]
   )(using ExecutionContext): Either[String, BatchResult] =
+    val outHeaders = table.headers ++ AnswerColumns.extraHeaders(config.questions)
     val total = table.rows.size
     val sem = Semaphore(config.concurrency)
     var completed = 0
@@ -60,7 +59,7 @@ object BatchRunner:
           val state = CsvIO.rowToState(row)
           val request = JevRequest(state, config.questions)
           val extraCells =
-            Await.result(client.run(request), Duration.Inf) match
+            Await.result(runRequest(request), Duration.Inf) match
               case Left(err) =>
                 AnswerColumns.valuesForError(config.questions, err.getMessage)
               case Right(response) =>

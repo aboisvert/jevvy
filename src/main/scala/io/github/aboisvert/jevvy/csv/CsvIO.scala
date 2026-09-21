@@ -1,4 +1,4 @@
-package csv
+package io.github.aboisvert.jevvy.csv
 
 import com.github.tototoshi.csv.*
 

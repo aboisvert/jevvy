@@ -1,4 +1,4 @@
-package batch
+package io.github.aboisvert.jevvy.batch
 
 import io.github.ticofab.jev._
 

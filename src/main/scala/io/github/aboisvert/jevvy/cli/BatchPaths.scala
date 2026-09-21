@@ -1,4 +1,4 @@
-package cli
+package io.github.aboisvert.jevvy.cli
 
 object BatchPaths:
   def stem(input: String): String =

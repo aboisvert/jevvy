@@ -1,4 +1,4 @@
-package config
+package io.github.aboisvert.jevvy.config
 
 import io.github.ticofab.jev._
 import org.virtuslab.yaml.*
@@ -87,10 +87,18 @@ object BatchConfig:
       cliConcurrency: Option[Int],
       cliModel: Option[String]
   ): Either[String, LoadedBatchConfig] =
+    resolve(file, cliConcurrency, cliModel, JevConfig.fromEnv.left.map(_.getMessage))
+
+  private[jevvy] def resolve(
+      file: BatchConfigFile,
+      cliConcurrency: Option[Int],
+      cliModel: Option[String],
+      baseConfig: Either[String, JevConfig]
+  ): Either[String, LoadedBatchConfig] =
     for
       questions <- buildQuestions(file)
-      baseConfig <- JevConfig.fromEnv.left.map(_.getMessage)
-      jevConfig = applyConfigOverrides(baseConfig, file, cliModel)
+      config <- baseConfig
+      jevConfig = applyConfigOverrides(config, file, cliModel)
       concurrency = cliConcurrency.orElse(file.concurrency).getOrElse(1)
       _ <-
         if concurrency < 1 then Left("concurrency must be at least 1")
