@@ -36,10 +36,10 @@ class AnswerColumnsTest extends FunSuite:
     )
 
   test("valuesForError pads blanks and sets jev_error"):
-    val cells = AnswerColumns.valuesForError(Seq(isUrgent, dept), "rate limited")
-    assertEquals(cells.size, 4)
-    assertEquals(cells.init.forall(_.isEmpty), true)
-    assertEquals(cells.last, "rate limited")
+    val fields = AnswerColumns.valuesForError(Seq(isUrgent, dept), "rate limited")
+    assertEquals(fields.size, 4)
+    assertEquals(fields.init.forall(_.isEmpty), true)
+    assertEquals(fields.last, "rate limited")
 
   test("valuesForSuccess extracts noul probability"):
     val body = JevResponseFixtures.bodyForNoul("is_urgent", 0.75)
@@ -65,9 +65,9 @@ class AnswerColumnsTest extends FunSuite:
   test("valuesForSuccess extracts score and nearest label"):
     val body = JevResponseFixtures.bodyForScore("sales_readiness", 1.6, 0 -> 0.1, 1 -> 0.3, 2 -> 0.6)
     val response = JevResponseFixtures.parse(body, Seq(readiness)).getOrElse(fail("parse failed"))
-    val cells = AnswerColumns.valuesForSuccess(response, Seq(readiness)).getOrElse(fail("expected success"))
-    assertEquals(cells.head, "1.6000")
-    assertEquals(cells(1), "hot")
+    val fields = AnswerColumns.valuesForSuccess(response, Seq(readiness)).getOrElse(fail("expected success"))
+    assertEquals(fields.head, "1.6000")
+    assertEquals(fields(1), "hot")
 
   test("valuesForSuccess fails when answer missing"):
     val body = JevResponseFixtures.bodyForNoul("is_urgent", 0.5)

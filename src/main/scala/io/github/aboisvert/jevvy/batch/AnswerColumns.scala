@@ -11,16 +11,26 @@ object AnswerColumns:
 
   def headerNamesFor(question: Question): Seq[String] =
     question match
-      case q: Question.Noul           => Seq(s"${q.name}_probability")
-      case q: Question.Choice[?]      => Seq(s"${q.name}_choice", s"${q.name}_confidence")
-      case q: Question.Score          => Seq(s"${q.name}_score", s"${q.name}_nearest_label")
+      case q: Question.Noul =>
+        Seq(s"${q.name}_probability")
+      case q: Question.Choice[?] =>
+        Seq(s"${q.name}_choice", s"${q.name}_confidence")
+      case q: Question.Score =>
+        Seq(s"${q.name}_score", s"${q.name}_nearest_label")
 
-  def valuesForSuccess(response: JevResponse, questions: Seq[Question]): Either[String, Seq[String]] =
-    questions.foldLeft(Right(Seq.empty[String]): Either[String, Seq[String]]) { (acc, q) =>
-      acc.flatMap(cells => cellsForQuestion(response, q).map(cells ++ _))
+  def valuesForSuccess(
+      response: JevResponse,
+      questions: Seq[Question]
+  ): Either[String, Seq[String]] =
+    questions.foldLeft(Right(Seq.empty[String]): Either[String, Seq[String]]) {
+      (acc, q) =>
+        acc.flatMap(fields => fieldsForQuestion(response, q).map(fields ++ _))
     }
 
-  private def cellsForQuestion(response: JevResponse, q: Question): Either[String, Seq[String]] =
+  private def fieldsForQuestion(
+      response: JevResponse,
+      q: Question
+  ): Either[String, Seq[String]] =
     q match
       case n: Question.Noul =>
         response.answers.get(n).toRight(missing(n.name)).map { a =>

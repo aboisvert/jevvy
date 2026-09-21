@@ -19,7 +19,7 @@ object CsvIO:
         if !it.hasNext then Right(f(Nil, Iterator.empty))
         else
           val headers = it.next()
-          val rows = it.map { cells => headers.zipAll(cells, "", "").toMap }
+          val rows = it.map { fields => headers.zipAll(fields, "", "").toMap }
           Right(f(headers, rows))
       finally reader.close()
     catch case e: Exception => Left(s"cannot read CSV $path: ${e.getMessage}")
@@ -28,7 +28,7 @@ object CsvIO:
     * after `f`.
     */
   def writeRows[A](path: String, headers: Seq[String])(
-      f: ((cells: Seq[String]) => Unit) => A
+      f: ((fields: Seq[String]) => Unit) => A
   ): Either[String, A] =
     try
       val writer = CSVWriter.open(path)
@@ -48,8 +48,8 @@ object CsvIO:
           case Nil                   => Right(CsvTable(Nil, Nil))
           case headerRow :: dataRows =>
             val headers = headerRow
-            val rows = dataRows.map { cells =>
-              headers.zipAll(cells, "", "").toMap
+            val rows = dataRows.map { fields =>
+              headers.zipAll(fields, "", "").toMap
             }
             Right(CsvTable(headers, rows))
       finally reader.close()

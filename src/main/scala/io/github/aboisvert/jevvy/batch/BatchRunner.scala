@@ -65,21 +65,21 @@ object BatchRunner:
       def logProgress(): Unit =
         if total % 10 == 0 then System.err.println(s"processed $total")
 
-      def rowCells(idx: Int, row: Map[String, String]): Seq[String] =
+      def rowFields(idx: Int, row: Map[String, String]): Seq[String] =
         try
           if config.delayMs > 0 && idx > 0 then AsyncOperations.sleep(config.delayMs)
-          val inputCells = CsvIO.rowValuesInOrder(headers, row)
+          val inputFields = CsvIO.rowValuesInOrder(headers, row)
           val state = CsvIO.rowToState(row)
           val request = JevRequest(state, config.questions)
-          val extraCells =
+          val extraFields =
             runRequest(request) match
               case Left(err) =>
                 AnswerColumns.valuesForError(config.questions, err.getMessage)
               case Right(response) =>
                 AnswerColumns.valuesForSuccess(response, config.questions) match
                   case Left(msg)    => AnswerColumns.valuesForError(config.questions, msg)
-                  case Right(cells) => cells :+ ""
-          inputCells ++ extraCells
+                  case Right(fields) => fields :+ ""
+          inputFields ++ extraFields
         catch
           case e: Exception =>
             CsvIO.rowValuesInOrder(headers, row) ++
@@ -90,14 +90,16 @@ object BatchRunner:
           val idx = rowIdx
           rowIdx += 1
           val row = rowIter.next()
-          window.enqueue(Future(rowCells(idx, row)))
+          window.enqueue(Future(rowFields(idx, row)))
 
+      // enqueue initial rows (at most `config.concurrency`)
       while window.size < config.concurrency && rowIter.hasNext do enqueueNext()
 
       while window.nonEmpty do
-        val cells = window.dequeue().await
-        writeRow(cells)
-        if cells.lastOption.exists(_.nonEmpty) then failures += 1
+        // dequeue a row and write its fields
+        val rowFields = window.dequeue().await
+        writeRow(rowFields)
+        if rowFields.lastOption.exists(_.nonEmpty) then failures += 1
         total += 1
         logProgress()
         enqueueNext()
