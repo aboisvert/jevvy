@@ -1,7 +1,7 @@
 package io.github.aboisvert.jevvy.batch
 
 import io.github.aboisvert.jevvy.config.LoadedBatchConfig
-import io.github.aboisvert.jevvy.csv.{CsvIO, CsvTable}
+import io.github.aboisvert.jevvy.csv.CsvIO
 import io.github.ticofab.jev.*
 import io.github.ticofab.jev.JevResponseFixtures
 import munit.FunSuite
@@ -33,7 +33,8 @@ class BatchRunnerTest extends FunSuite:
       val result =
         BatchRunner.runWith(
           loadedConfig,
-          table,
+          table.headers,
+          table.rows.iterator,
           outPath,
           _ => Future.successful(Right(response))
         ).getOrElse(fail("runWith failed"))
@@ -55,12 +56,12 @@ class BatchRunnerTest extends FunSuite:
     val inputPath = Files.createTempFile("jevvy-in-err", ".csv").toString
     try
       assert(CsvIO.write(inputPath, Seq("message"), Seq(Seq("x"))).isRight)
-      val table = CsvTable(Seq("message"), Seq(Map("message" -> "x")))
       val result =
         BatchRunner
           .runWith(
             loadedConfig,
-            table,
+            Seq("message"),
+            Iterator(Map("message" -> "x")),
             outPath,
             _ => Future.successful(Left(JevError.RateLimited(None, "rate limited")))
           )
@@ -68,6 +69,48 @@ class BatchRunnerTest extends FunSuite:
       assertEquals(result.failures, 1)
       val written = CsvIO.read(outPath).getOrElse(fail("read output failed"))
       assert(written.rows.head.get("jev_error").exists(_.contains("rate limited")))
+    finally
+      Files.deleteIfExists(java.nio.file.Path.of(outPath))
+      Files.deleteIfExists(java.nio.file.Path.of(inputPath))
+
+  test("runWith preserves row order under concurrency"):
+    val outPath = Files.createTempFile("jevvy-out-order", ".csv").toString
+    val inputPath = Files.createTempFile("jevvy-in-order", ".csv").toString
+    val config = loadedConfig.copy(concurrency = 2)
+    try
+      assert(
+        CsvIO
+          .write(
+            inputPath,
+            Seq("message"),
+            Seq(Seq("slow"), Seq("b"), Seq("c"))
+          )
+          .isRight
+      )
+      val table = CsvIO.read(inputPath).getOrElse(fail("read input failed"))
+      val body = JevResponseFixtures.bodyForNoul("is_urgent", 0.5)
+      val response = JevResponseFixtures.parse(body, Seq(isUrgent)).getOrElse(fail("parse failed"))
+      val result =
+        BatchRunner
+          .runWith(
+            config,
+            table.headers,
+            table.rows.iterator,
+            outPath,
+            req =>
+              val slow = req.state.asString.contains("slow")
+              Future {
+                if slow then Thread.sleep(150)
+                Right(response)
+              }
+          )
+          .getOrElse(fail("runWith failed"))
+      assertEquals(result.total, 3)
+      val written = CsvIO.read(outPath).getOrElse(fail("read output failed"))
+      assertEquals(
+        written.rows.map(_("message")),
+        Seq("slow", "b", "c")
+      )
     finally
       Files.deleteIfExists(java.nio.file.Path.of(outPath))
       Files.deleteIfExists(java.nio.file.Path.of(inputPath))

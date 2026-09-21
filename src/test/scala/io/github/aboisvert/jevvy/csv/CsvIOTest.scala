@@ -13,6 +13,27 @@ class CsvIOTest extends FunSuite:
       assertEquals(CsvIO.read(path), Right(CsvTable(Nil, Nil)))
     finally Files.deleteIfExists(java.nio.file.Path.of(path))
 
+  test("readRows pulls rows lazily"):
+    val path = Files.createTempFile("jevvy-lazy", ".csv").toString
+    try
+      assert(
+        CsvIO
+          .write(path, Seq("id"), Seq(Seq("1"), Seq("2"), Seq("3")))
+          .isRight
+      )
+      var rowsConsumed = 0
+      val onlyFirst =
+        CsvIO.readRows(path) { (_, rows) =>
+          val counted = rows.map { row =>
+            rowsConsumed += 1
+            row
+          }
+          counted.next().getOrElse("id", "")
+        }
+      assertEquals(onlyFirst, Right("1"))
+      assertEquals(rowsConsumed, 1)
+    finally Files.deleteIfExists(java.nio.file.Path.of(path))
+
   test("write and read roundtrip"):
     val path = Files.createTempFile("jevvy-roundtrip", ".csv").toString
     try
