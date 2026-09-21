@@ -3,12 +3,12 @@ package io.github.aboisvert.jevvy.batch
 import io.github.aboisvert.jevvy.config.LoadedBatchConfig
 import io.github.aboisvert.jevvy.csv.CsvIO
 import io.github.ticofab.jev._
-import sttp.client4.DefaultFutureBackend
+import sttp.client4.DefaultSyncBackend
 
-import java.util.concurrent.Semaphore
+import gears.async.*
+import gears.async.default.given
+
 import scala.collection.mutable
-import scala.concurrent.{Await, ExecutionContext, Future, Promise}
-import scala.concurrent.duration.Duration
 
 final case class BatchResult(outputPath: String, total: Int, failures: Int)
 
@@ -19,9 +19,7 @@ object BatchRunner:
       inputPath: String,
       outputPath: String
   ): Either[String, BatchResult] =
-    given ExecutionContext = ExecutionContext.global
-
-    val backend = DefaultFutureBackend()
+    val backend = DefaultSyncBackend()
     val clientE =
       try JevClient.create(backend, config.jevConfig).left.map(_.getMessage)
       catch
@@ -42,101 +40,66 @@ object BatchRunner:
       headers: Seq[String],
       rows: Iterator[Map[String, String]],
       outputPath: String,
-      runRequest: JevRequest => Future[Either[JevError, JevResponse]]
-  )(using ExecutionContext): Either[String, BatchResult] =
+      runRequest: JevRequest => Either[JevError, JevResponse]
+  ): Either[String, BatchResult] =
     val outHeaders = headers ++ AnswerColumns.extraHeaders(config.questions)
-    CsvIO.writeRows(outputPath, outHeaders) { writeRow =>
-      processRowsOrdered(config, headers, rows, runRequest, writeRow)
-        .copy(outputPath = outputPath)
-    }
+    Async.blocking:
+      CsvIO.writeRows(outputPath, outHeaders) { writeRow =>
+        processRowsOrdered(config, headers, rows, runRequest, writeRow)
+          .copy(outputPath = outputPath)
+      }
 
   private def processRowsOrdered(
       config: LoadedBatchConfig,
       headers: Seq[String],
       rowIter: Iterator[Map[String, String]],
-      runRequest: JevRequest => Future[Either[JevError, JevResponse]],
+      runRequest: JevRequest => Either[JevError, JevResponse],
       writeRow: Seq[String] => Unit
-  )(using ExecutionContext): BatchResult =
-    val sem = Semaphore(config.concurrency)
-    val pending = mutable.Map.empty[Int, Seq[String]]
-    val lock = new AnyRef
-    var submitIdx = 0
-    var nextWrite = 0
-    var inFlight = 0
-    var failures = 0
-    var progress = 0
-    var inputExhausted = false
-    val done = Promise[BatchResult]()
+  )(using Async): BatchResult =
+    Async.group:
+      val window = mutable.Queue.empty[Future[Seq[String]]]
+      var rowIdx = 0
+      var failures = 0
+      var total = 0
 
-    def logProgress(): Unit =
-      if progress % 10 == 0 then System.err.println(s"processed $progress")
+      def logProgress(): Unit =
+        if total % 10 == 0 then System.err.println(s"processed $total")
 
-    def tryFlush(): Unit =
-      while pending.contains(nextWrite) do
-        val cells = pending.remove(nextWrite).get
+      def rowCells(idx: Int, row: Map[String, String]): Seq[String] =
+        try
+          if config.delayMs > 0 && idx > 0 then AsyncOperations.sleep(config.delayMs)
+          val inputCells = CsvIO.rowValuesInOrder(headers, row)
+          val state = CsvIO.rowToState(row)
+          val request = JevRequest(state, config.questions)
+          val extraCells =
+            runRequest(request) match
+              case Left(err) =>
+                AnswerColumns.valuesForError(config.questions, err.getMessage)
+              case Right(response) =>
+                AnswerColumns.valuesForSuccess(response, config.questions) match
+                  case Left(msg)    => AnswerColumns.valuesForError(config.questions, msg)
+                  case Right(cells) => cells :+ ""
+          inputCells ++ extraCells
+        catch
+          case e: Exception =>
+            CsvIO.rowValuesInOrder(headers, row) ++
+              AnswerColumns.valuesForError(config.questions, e.getMessage)
+
+      def enqueueNext(): Unit =
+        if rowIter.hasNext then
+          val idx = rowIdx
+          rowIdx += 1
+          val row = rowIter.next()
+          window.enqueue(Future(rowCells(idx, row)))
+
+      while window.size < config.concurrency && rowIter.hasNext do enqueueNext()
+
+      while window.nonEmpty do
+        val cells = window.dequeue().await
         writeRow(cells)
         if cells.lastOption.exists(_.nonEmpty) then failures += 1
-        nextWrite += 1
-        progress += 1
+        total += 1
         logProgress()
+        enqueueNext()
 
-    def maybeFinish(): Unit =
-      if inputExhausted && inFlight == 0 && nextWrite == submitIdx then
-        done.success(BatchResult("", submitIdx, failures))
-
-    def rowCells(row: Map[String, String], idx: Int): Seq[String] =
-      sem.acquire()
-      try
-        if config.delayMs > 0 && idx > 0 then Thread.sleep(config.delayMs)
-        val inputCells = CsvIO.rowValuesInOrder(headers, row)
-        val state = CsvIO.rowToState(row)
-        val request = JevRequest(state, config.questions)
-        val extraCells =
-          Await.result(runRequest(request), Duration.Inf) match
-            case Left(err) =>
-              AnswerColumns.valuesForError(config.questions, err.getMessage)
-            case Right(response) =>
-              AnswerColumns.valuesForSuccess(response, config.questions) match
-                case Left(msg)    => AnswerColumns.valuesForError(config.questions, msg)
-                case Right(cells) => cells :+ ""
-        inputCells ++ extraCells
-      finally sem.release()
-
-    def runOne(idx: Int, row: Map[String, String]): Unit =
-      val future = Future {
-        rowCells(row, idx)
-      }
-      future.foreach { outCells =>
-        lock.synchronized:
-          pending(idx) = outCells
-          inFlight -= 1
-          tryFlush()
-          pumpSubmit()
-          maybeFinish()
-      }
-      future.failed.foreach { err =>
-        lock.synchronized:
-          pending(idx) =
-            CsvIO.rowValuesInOrder(headers, row) ++
-              AnswerColumns.valuesForError(config.questions, err.getMessage)
-          inFlight -= 1
-          tryFlush()
-          pumpSubmit()
-          maybeFinish()
-      }
-
-    def pumpSubmit(): Unit =
-      var batch = List.empty[(Int, Map[String, String])]
-      while inFlight + batch.size < config.concurrency && rowIter.hasNext do
-        val idx = submitIdx
-        submitIdx += 1
-        batch = (idx, rowIter.next()) :: batch
-      if !rowIter.hasNext then inputExhausted = true
-      inFlight += batch.size
-      batch.reverse.foreach { (idx, row) => runOne(idx, row) }
-
-    lock.synchronized:
-      pumpSubmit()
-      maybeFinish()
-
-    Await.result(done.future, Duration.Inf)
+      BatchResult("", total, failures)

@@ -7,11 +7,8 @@ import io.github.ticofab.jev.JevResponseFixtures
 import munit.FunSuite
 
 import java.nio.file.Files
-import scala.concurrent.{ExecutionContext, Future}
 
 class BatchRunnerTest extends FunSuite:
-
-  private given ExecutionContext = ExecutionContext.global
 
   private val isUrgent = Question.noul("is_urgent", "Urgent?")
 
@@ -36,7 +33,7 @@ class BatchRunnerTest extends FunSuite:
           table.headers,
           table.rows.iterator,
           outPath,
-          _ => Future.successful(Right(response))
+          _ => Right(response)
         ).getOrElse(fail("runWith failed"))
       assertEquals(result.total, 1)
       assertEquals(result.failures, 0)
@@ -63,7 +60,7 @@ class BatchRunnerTest extends FunSuite:
             Seq("message"),
             Iterator(Map("message" -> "x")),
             outPath,
-            _ => Future.successful(Left(JevError.RateLimited(None, "rate limited")))
+            _ => Left(JevError.RateLimited(None, "rate limited"))
           )
           .getOrElse(fail("runWith failed"))
       assertEquals(result.failures, 1)
@@ -98,11 +95,8 @@ class BatchRunnerTest extends FunSuite:
             table.rows.iterator,
             outPath,
             req =>
-              val slow = req.state.asString.contains("slow")
-              Future {
-                if slow then Thread.sleep(150)
-                Right(response)
-              }
+              if req.state.asString.contains("slow") then Thread.sleep(150)
+              Right(response)
           )
           .getOrElse(fail("runWith failed"))
       assertEquals(result.total, 3)
