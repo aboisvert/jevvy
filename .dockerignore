@@ -1,0 +1,12 @@
+.env
+out/
+.scala-build/
+.bsp/
+.metals/
+.git/
+.cursor/
+docs/
+examples/
+src/test/
+*.md
+.agents/

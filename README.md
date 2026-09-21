@@ -160,6 +160,14 @@ To build the native binary (GraalVM; slow first build):
 just native        # writes out/jevvy
 ```
 
+To build versioned release binaries (GraalVM; slow). Bump the repo-root [`VERSION`](VERSION) file (e.g. `0.1`) before cutting a release:
+
+```bash
+just release
+```
+
+On **macOS arm64**, this writes `out/jevvy-osx-arm64-v<VERSION>-bin` on the host and `out/jevvy-linux-x64-v<VERSION>-bin` via Docker (`linux/amd64`; requires Docker Desktop with enough memory). On **Linux x86_64**, only the Linux binary is built. Other platforms are rejected.
+
 Built with [scala-jev-sdk](https://github.com/ticofab/scala-jev-sdk) on Scala 3.
 
 ## Related links
