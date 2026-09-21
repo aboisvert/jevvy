@@ -59,6 +59,26 @@ jevvy --help
 
 The process exits with code **1** if any row fails or config/IO errors occur.
 
+## Environment variables
+
+jevvy reads TypeSafe settings from the environment via [scala-jev-sdk](https://github.com/ticofab/scala-jev-sdk) (`JevConfig.fromEnv`).
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `TYPESAFE_API_KEY` | API key from your [TypeSafe](https://docs.typesafe.ai/) account | *(required)* |
+| `TYPESAFE_BASE_URL` | TypeSafe API base URL | `https://api.typesafe.ai` |
+| `TYPESAFE_DEFAULT_MODEL` | Default Jev model when YAML `model` and `--model` are not set | `jev-latest` |
+
+Example:
+
+```bash
+export TYPESAFE_API_KEY=your-key-here
+export TYPESAFE_DEFAULT_MODEL=jev-latest   # optional
+export TYPESAFE_BASE_URL=https://api.typesafe.ai   # optional
+```
+
+Per-run model overrides still apply: YAML `model`, then CLI `--model` (see [Configuration](#configuration)).
+
 ## Configuration
 
 YAML defines settings and one or more Jev questions. Supported question types: **`noul`**, **`choice`**, and **`score`**.

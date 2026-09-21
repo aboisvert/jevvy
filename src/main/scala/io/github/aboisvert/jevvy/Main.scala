@@ -3,6 +3,7 @@ package io.github.aboisvert.jevvy
 import io.github.aboisvert.jevvy.batch.BatchRunner
 import io.github.aboisvert.jevvy.cli.BatchPaths
 import io.github.aboisvert.jevvy.config.BatchConfig
+import io.github.ticofab.jev.JevConfig
 import mainargs.{arg, main, ParserForMethods}
 
 object Main:
@@ -28,6 +29,10 @@ object Main:
       @arg(doc = "Override YAML concurrency") concurrency: Option[Int] = None,
       @arg(doc = "Override YAML model") model: Option[String] = None
   ): Unit =
+    JevConfig.fromEnv.left.foreach { err =>
+      System.err.println(err.getMessage)
+      sys.exit(1)
+    }
     val (configPath, inputPath, outputPath) = BatchPaths.resolve(input, config, output)
     val result =
       for
