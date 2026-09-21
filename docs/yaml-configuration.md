@@ -21,21 +21,7 @@ jevvy --input data/leads.csv --config configs/lead-scoring.yaml
 
 Output defaults to `{input-stem}-out.csv` (for example `myfile-out.csv`). Override with `--output`.
 
-## End-to-end flow
-
-```mermaid
-flowchart LR
-  yaml[YAML config]
-  csv[Input CSV rows]
-  resolve[BatchConfig.resolve]
-  jev[Jev API]
-  out[Output CSV]
-  yaml --> resolve
-  csv --> rowState[rowToState JSON]
-  rowState --> jev
-  resolve --> jev
-  jev --> out
-```
+## Data flow
 
 For each row:
 
