@@ -4,30 +4,40 @@ Run CSV rows through [Jev](https://docs.typesafe.ai/) with YAML-defined question
 
 Licensed under the [Apache License, Version 2.0](LICENSE).
 
-## Requirements
+## Usage Requirements
 
-- **JDK** — [Amazon Corretto 27](https://docs.aws.amazon.com/corretto/) (see [`.tool-versions`](.tool-versions) for asdf)
-- **[Scala CLI](https://scala-cli.virtuslab.org/)**
-- **`TYPESAFE_API_KEY`** — from your TypeSafe account
-- **[just](https://github.com/casey/just)** (optional) — loads `.env` and runs example recipes
+- Download the **`jevvy`** executable for your platform
+- **`TYPESAFE_API_KEY`** from your TypeSafe account
 
-## Quick start
+## Quick Start
 
-```bash
-# In the repo root
-echo 'TYPESAFE_API_KEY=your-key-here' > .env
+- Create `myfile.yaml` configuration file containing the desired questions:
 
-# With just (loads .env automatically)
-just example-triage
-
-# Or with Scala CLI directly
-export TYPESAFE_API_KEY=your-key-here
-scala-cli run . -- --input examples/support-triage.csv
+```yaml
+questions:
+  - name: department
+    type: choice
+    question: Which team should handle this message?
+    options:
+      - id: billing
+        description: Payments and refunds
+      - id: sales
+        description: purchasing, pricing
+      - ...
 ```
 
-For `examples/support-triage.csv`, config defaults to `examples/support-triage.yaml` and output to `examples/support-triage-out.csv`.
+- Export your **`TYPESAFE_API_KEY`**
 
-## CLI
+```bash
+export TYPESAFE_API_KEY=your-key-here
+```
+
+- Run the **`jevvy`** command:
+
+```bash
+jevvy --input myfile.csv
+```
+## CLI Usage
 
 ```text
 jevvy --input PATH [--config PATH] [--output PATH] [--concurrency N] [--model NAME]
@@ -44,9 +54,7 @@ jevvy --input PATH [--config PATH] [--output PATH] [--concurrency N] [--model NA
 Help:
 
 ```bash
-scala-cli run . -- --help
-# After `just native`:
-./out/jevvy --help
+jevvy --help
 ```
 
 The process exits with code **1** if any row fails or config/IO errors occur.
@@ -75,6 +83,7 @@ questions:
     options:
       - id: billing
         description: Payments and refunds
+      - ...
 ```
 
 See [`examples/`](examples/) for full configs.
@@ -97,6 +106,29 @@ just example-moderation
 just example-lead-scoring
 ```
 
+## Dev Requirements
+
+- **JDK** — [Amazon Corretto 27](https://docs.aws.amazon.com/corretto/) (see [`.tool-versions`](.tool-versions) for asdf)
+- **[Scala CLI](https://scala-cli.virtuslab.org/)**
+- **`TYPESAFE_API_KEY`** — from your TypeSafe account
+- **[just](https://github.com/casey/just)** (optional) — loads `.env` and runs example recipes
+
+## Dev Check
+
+```bash
+# In the repo root
+echo 'TYPESAFE_API_KEY=your-key-here' > .env
+
+# With just (loads .env automatically)
+just example-triage
+
+# Or with Scala CLI
+export TYPESAFE_API_KEY=your-key-here
+scala-cli run . -- --input examples/support-triage.csv
+```
+
+For `examples/support-triage.csv`, config defaults to `examples/support-triage.yaml` and output to `examples/support-triage-out.csv`.
+
 ## Development
 
 ```bash
@@ -104,7 +136,7 @@ just test          # or: scala-cli test .
 just run           # show CLI help
 ```
 
-Native binary (GraalVM; slow first build):
+To build the native binary (GraalVM; slow first build):
 
 ```bash
 just native        # writes out/jevvy
