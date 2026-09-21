@@ -17,6 +17,7 @@ class BatchRunnerTest extends FunSuite:
       JevConfig("test-key"),
       concurrency = 1,
       delayMs = 0L,
+      retryPolicy = RetryPolicy.default,
       questions = Seq(isUrgent)
     )
 

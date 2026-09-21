@@ -23,6 +23,7 @@ final case class BatchConfigFile(
   timeout_seconds: Option[Int] = None,
   concurrency: Option[Int] = None,
   delay_ms: Option[Long] = None,
+  max_retries: Option[Int] = None,
   questions: List[QuestionYaml]
 ) derives YamlCodec
 
@@ -31,6 +32,7 @@ final case class LoadedBatchConfig(
   jevConfig: JevConfig,
   concurrency: Int,
   delayMs: Long,
+  retryPolicy: RetryPolicy,
   questions: Seq[Question]
 )
 
@@ -89,29 +91,46 @@ object BatchConfig:
   def resolve(
     file: BatchConfigFile,
     cliConcurrency: Option[Int],
-    cliModel: Option[String]
+    cliModel: Option[String],
+    cliMaxRetries: Option[Int] = None
   ): Either[String, LoadedBatchConfig] =
-    resolve(file, cliConcurrency, cliModel, JevConfig.fromEnv.left.map(_.getMessage))
+    resolve(
+      file,
+      cliConcurrency,
+      cliModel,
+      cliMaxRetries,
+      JevConfig.fromEnv.left.map(_.getMessage)
+    )
 
   private[jevvy] def resolve(
     file: BatchConfigFile,
     cliConcurrency: Option[Int],
     cliModel: Option[String],
+    cliMaxRetries: Option[Int],
     baseConfig: Either[String, JevConfig]
   ): Either[String, LoadedBatchConfig] =
     for
-      questions  <- buildQuestions(file)
-      config     <- baseConfig
-      jevConfig   = applyConfigOverrides(config, file, cliModel)
-      concurrency = cliConcurrency.orElse(file.concurrency).getOrElse(1)
-      _          <-
+      questions   <- buildQuestions(file)
+      config      <- baseConfig
+      jevConfig    = applyConfigOverrides(config, file, cliModel)
+      concurrency  = cliConcurrency.orElse(file.concurrency).getOrElse(1)
+      _           <-
         if concurrency < 1 then Left("concurrency must be at least 1")
         else Right(())
       delayMs = file.delay_ms.getOrElse(0L)
       _      <-
         if delayMs < 0 then Left("delay_ms must be non-negative")
         else Right(())
-    yield LoadedBatchConfig(jevConfig, concurrency, delayMs, questions)
+      maxRetries = cliMaxRetries.orElse(file.max_retries).getOrElse(3)
+      _         <-
+        if maxRetries < 0 then Left("max_retries must be non-negative")
+        else Right(())
+      retryPolicy = retryPolicyFrom(maxRetries)
+    yield LoadedBatchConfig(jevConfig, concurrency, delayMs, retryPolicy, questions)
+
+  private def retryPolicyFrom(maxRetries: Int): RetryPolicy =
+    if maxRetries == 0 then RetryPolicy.none
+    else RetryPolicy(maxRetries = maxRetries)
 
   private def applyConfigOverrides(
     base: JevConfig,

@@ -22,7 +22,7 @@ object BatchRunner:
     val backend = DefaultSyncBackend()
     // Sync sttp backend must outlive the client; close on create failure so we do not leak connections.
     val clientE =
-      try JevClient.create(backend, config.jevConfig).left.map(_.getMessage)
+      try JevClient.create(backend, config.jevConfig, config.retryPolicy).left.map(_.getMessage)
       catch
         case e: Exception =>
           backend.close()

@@ -1,6 +1,6 @@
 package io.github.aboisvert.jevvy.config
 
-import io.github.ticofab.jev.{JevConfig, Question}
+import io.github.ticofab.jev.{JevConfig, Question, RetryPolicy}
 import munit.FunSuite
 
 import scala.concurrent.duration.*
@@ -120,12 +120,13 @@ class BatchConfigTest extends FunSuite:
     val file   = BatchConfig.loadFromString(yaml).getOrElse(fail("yaml parse failed"))
     val loaded =
       BatchConfig
-        .resolve(file, Some(2), Some("cli-model"), testBaseConfig)
+        .resolve(file, Some(2), Some("cli-model"), None, testBaseConfig)
         .getOrElse(fail("resolve failed"))
     assertEquals(loaded.concurrency, 2)
     assertEquals(loaded.delayMs, 100L)
     assertEquals(loaded.jevConfig.model, "cli-model")
     assertEquals(loaded.jevConfig.timeout, 42.seconds)
+    assertEquals(loaded.retryPolicy, RetryPolicy.default)
 
   test("resolve rejects concurrency below 1"):
     val yaml =
@@ -136,7 +137,7 @@ class BatchConfigTest extends FunSuite:
          |""".stripMargin
     val file = BatchConfig.loadFromString(yaml).getOrElse(fail("yaml parse failed"))
     assertEquals(
-      BatchConfig.resolve(file, Some(0), None, testBaseConfig),
+      BatchConfig.resolve(file, Some(0), None, None, testBaseConfig),
       Left("concurrency must be at least 1")
     )
 
@@ -150,6 +151,59 @@ class BatchConfigTest extends FunSuite:
          |""".stripMargin
     val file = BatchConfig.loadFromString(yaml).getOrElse(fail("yaml parse failed"))
     assertEquals(
-      BatchConfig.resolve(file, None, None, testBaseConfig),
+      BatchConfig.resolve(file, None, None, None, testBaseConfig),
       Left("delay_ms must be non-negative")
+    )
+
+  test("resolve defaults max_retries to SDK default when omitted"):
+    val yaml =
+      """|questions:
+         |  - name: is_spam
+         |    type: noul
+         |    question: Spam?
+         |""".stripMargin
+    val file   = BatchConfig.loadFromString(yaml).getOrElse(fail("yaml parse failed"))
+    val loaded = BatchConfig.resolve(file, None, None, None, testBaseConfig).getOrElse(fail("resolve failed"))
+    assertEquals(loaded.retryPolicy, RetryPolicy.default)
+
+  test("resolve applies max_retries from YAML and CLI override wins"):
+    val yaml =
+      """|max_retries: 5
+         |questions:
+         |  - name: is_spam
+         |    type: noul
+         |    question: Spam?
+         |""".stripMargin
+    val file = BatchConfig.loadFromString(yaml).getOrElse(fail("yaml parse failed"))
+    val fromYaml =
+      BatchConfig.resolve(file, None, None, None, testBaseConfig).getOrElse(fail("resolve failed"))
+    assertEquals(fromYaml.retryPolicy, RetryPolicy(maxRetries = 5))
+    val fromCli =
+      BatchConfig.resolve(file, None, None, Some(1), testBaseConfig).getOrElse(fail("resolve failed"))
+    assertEquals(fromCli.retryPolicy, RetryPolicy(maxRetries = 1))
+
+  test("resolve max_retries 0 disables retries"):
+    val yaml =
+      """|max_retries: 0
+         |questions:
+         |  - name: is_spam
+         |    type: noul
+         |    question: Spam?
+         |""".stripMargin
+    val file   = BatchConfig.loadFromString(yaml).getOrElse(fail("yaml parse failed"))
+    val loaded = BatchConfig.resolve(file, None, None, None, testBaseConfig).getOrElse(fail("resolve failed"))
+    assertEquals(loaded.retryPolicy, RetryPolicy.none)
+
+  test("resolve rejects negative max_retries"):
+    val yaml =
+      """|max_retries: -1
+         |questions:
+         |  - name: is_spam
+         |    type: noul
+         |    question: Spam?
+         |""".stripMargin
+    val file = BatchConfig.loadFromString(yaml).getOrElse(fail("yaml parse failed"))
+    assertEquals(
+      BatchConfig.resolve(file, None, None, None, testBaseConfig),
+      Left("max_retries must be non-negative")
     )

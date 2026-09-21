@@ -40,7 +40,7 @@ jevvy --input myfile.csv
 ## CLI Usage
 
 ```text
-jevvy --input PATH [--config PATH] [--output PATH] [--concurrency N] [--model NAME]
+jevvy --input PATH [--config PATH] [--output PATH] [--concurrency N] [--model NAME] [--max-retries N]
 ```
 
 | Flag | Description |
@@ -50,8 +50,11 @@ jevvy --input PATH [--config PATH] [--output PATH] [--concurrency N] [--model NA
 | `--output` | Output CSV (default: `{input stem}-out.csv`) |
 | `--concurrency` | Override YAML `concurrency` |
 | `--model` | Override YAML `model` |
+| `--max-retries` | Override YAML `max_retries` (`0` disables SDK retries on transient API errors) |
 
 **Row order:** The output CSV keeps the same row order as the input. With `concurrency` greater than 1, rows are processed in parallel, but each result is written in input order (not completion order).
+
+**Retries:** Each row’s Jev call retries transient failures (429, 529, 5xx, connection errors) by default — three extra attempts with exponential backoff via [scala-jev-sdk](https://github.com/ticofab/scala-jev-sdk). Tune with YAML `max_retries` or `--max-retries`; see [docs/yaml-configuration.md](docs/yaml-configuration.md).
 
 Help:
 

@@ -50,6 +50,7 @@ For each row:
 | `questions` | list of question objects | **Yes** | — | Must contain at least one question. |
 | `concurrency` | integer | No | `1` | Parallel rows in flight. Must be ≥ 1. |
 | `delay_ms` | integer (milliseconds) | No | `0` | Sleep before each row after the first (rate limiting). Must be ≥ 0. |
+| `max_retries` | integer | No | `3` | Extra Jev HTTP attempts after the first on transient failures (429, 529, 5xx, connection). `0` disables retries. See [Max retries precedence](#max-retries). |
 | `model` | string | No | from env | Jev model name; see [Model precedence](#model-precedence). |
 | `timeout_seconds` | integer | No | SDK default | Per-request HTTP timeout for Jev. |
 
@@ -71,6 +72,7 @@ model: jev-latest
 timeout_seconds: 60
 concurrency: 4
 delay_ms: 250
+max_retries: 3
 
 questions:
   - name: should_block
@@ -108,6 +110,24 @@ Example: YAML says `concurrency: 4`, but a one-off dry run uses a single worker:
 jevvy --input myfile.csv --concurrency 1
 ```
 
+### Max retries
+
+Transient Jev API failures are retried inside each row’s request via [scala-jev-sdk](https://github.com/ticofab/scala-jev-sdk) (`RetryPolicy`). Defaults match the SDK: exponential backoff from 500 ms (cap 8 s, jitter), honoring `Retry-After` on 429 when present. Validation errors (422) and auth failures are not retried.
+
+| Priority (highest first) | Source |
+|--------------------------|--------|
+| 1 | CLI `--max-retries N` |
+| 2 | YAML `max_retries` |
+| 3 | Default `3` |
+
+Use `max_retries: 0` (or `--max-retries 0`) to fail fast on the first error — useful for debugging. For rate limits across many rows, combine a lower `concurrency` or non-zero `delay_ms` with retries rather than disabling retries entirely.
+
+Example:
+
+```bash
+jevvy --input myfile.csv --max-retries 0
+```
+
 ### Model precedence
 
 | Priority (highest first) | Source |
@@ -135,10 +155,11 @@ jevvy --input myfile.csv --model cli-model
 
 API key and base URL are **not** in YAML; set `TYPESAFE_API_KEY` (required) and optionally `TYPESAFE_BASE_URL`. See the [README](../README.md#environment-variables).
 
-### Timeout and delay
+### Timeout, delay, and retries
 
 - `timeout_seconds` — YAML only (applied when the config is loaded).
 - `delay_ms` — YAML only; applied between row requests (row index 0 has no delay).
+- `max_retries` — YAML or CLI; see [Max retries](#max-retries). Retries apply per row’s Jev call, not between rows.
 
 ## Question object (all types)
 
@@ -547,6 +568,7 @@ Choice and score questions are also validated with the Jev SDK before run; malfo
 |-----------|---------|
 | `concurrency` < 1 (CLI or YAML) | `concurrency must be at least 1` |
 | `delay_ms` < 0 | `delay_ms must be non-negative` |
+| `max_retries` < 0 | `max_retries must be non-negative` |
 | Missing API key (env) | From `JevConfig.fromEnv` (e.g. missing `TYPESAFE_API_KEY`) |
 
 ### Per-row (output)
@@ -566,7 +588,8 @@ Choice and score questions are also validated with the Jev SDK before run; malfo
 4. **Choice `id` values** — Use stable snake_case; descriptions can be long and explanatory.
 5. **Score level order** — List levels from low to high; labels should match what you want in `{name}_nearest_label`.
 6. **Concurrency and `delay_ms`** — Increase parallelism for speed; add delay if you hit rate limits.
-7. **Model and timeout** — Set `model` / `timeout_seconds` in YAML for reproducible batches; use CLI `--model` for experiments.
+7. **`max_retries`** — Leave at the default for production batches; set `0` only when you need immediate failure without backoff.
+8. **Model and timeout** — Set `model` / `timeout_seconds` in YAML for reproducible batches; use CLI `--model` for experiments.
 
 ---
 

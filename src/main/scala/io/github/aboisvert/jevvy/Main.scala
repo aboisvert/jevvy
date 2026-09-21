@@ -11,7 +11,7 @@ object Main:
   def main(args: Array[String]): Unit =
     if args.isEmpty then
       System.err.println(
-        "Usage: jevvy --input PATH [--config PATH] [--output PATH] [--concurrency N] [--model NAME]"
+        "Usage: jevvy --input PATH [--config PATH] [--output PATH] [--concurrency N] [--model NAME] [--max-retries N]"
       )
       System.err.println("Example:")
       System.err.println("  scala-cli run . -- --input examples/support-triage.csv")
@@ -29,7 +29,8 @@ object Main:
     @arg(doc = "Path to YAML config (default: input stem + .yaml)") config: Option[String] = None,
     @arg(doc = "Output CSV path (default: input stem + -out.csv)") output: Option[String] = None,
     @arg(doc = "Override YAML concurrency") concurrency: Option[Int] = None,
-    @arg(doc = "Override YAML model") model: Option[String] = None
+    @arg(doc = "Override YAML model") model: Option[String] = None,
+    @arg(doc = "Override YAML max_retries (0 disables SDK retries)") maxRetries: Option[Int] = None
   ): Unit =
     // Fail before path/config work so missing TYPESAFE_API_KEY is reported immediately.
     JevConfig.fromEnv.left.foreach { err =>
@@ -40,7 +41,7 @@ object Main:
     val result                              =
       for
         file        <- BatchConfig.loadFromFile(configPath)
-        loaded      <- BatchConfig.resolve(file, concurrency, model)
+        loaded      <- BatchConfig.resolve(file, concurrency, model, maxRetries)
         batchResult <- BatchRunner.run(loaded, inputPath, outputPath)
       yield batchResult
 
