@@ -45,6 +45,41 @@ native graal_jvm_id=env_var_or_default('GRAALVM_JVM_ID', ''):
       exec scala-cli --power package . --force
     fi
 
+# Host paths for Coursier / Scala CLI caches (bind-mounted into linux Docker builds).
+_docker_cache_dirs:
+    #!/usr/bin/env sh
+    set -eu
+    case "$(uname -s)" in
+      Darwin)
+        coursier="${COURSIER_CACHE_HOST:-$HOME/Library/Caches/Coursier}"
+        scala_cli="${SCALA_CLI_CACHE_HOST:-$HOME/Library/Caches/ScalaCli}"
+        ;;
+      Linux)
+        base="${XDG_CACHE_HOME:-$HOME/.cache}"
+        coursier="${COURSIER_CACHE_HOST:-$base/coursier}"
+        scala_cli="${SCALA_CLI_CACHE_HOST:-$base/scala-cli}"
+        ;;
+      *)
+        echo "Unsupported OS for Docker cache dirs: $(uname -s)" >&2
+        exit 1
+        ;;
+    esac
+    mkdir -p "$coursier" "$scala_cli"
+    printf '%s\n' "$coursier" "$scala_cli"
+
+# GraalVM native linux/amd64 binary in a local image (for release or debugging).
+docker-linux-build:
+    #!/usr/bin/env sh
+    set -eu
+    cache_dirs="$(just _docker_cache_dirs)"
+    coursier="$(printf '%s\n' "$cache_dirs" | sed -n '1p')"
+    scala_cli="$(printf '%s\n' "$cache_dirs" | sed -n '2p')"
+    DOCKER_BUILDKIT=1 docker build --platform linux/amd64 \
+      -f docker/linux.Dockerfile \
+      --build-context "coursier-cache=$coursier" \
+      --build-context "scala-cli-cache=$scala_cli" \
+      -t jevvy-linux-build .
+
 # Build versioned release binaries (see VERSION). macOS arm64: host + Docker linux/amd64; Linux x86_64: host only.
 release:
     #!/usr/bin/env sh
@@ -67,7 +102,7 @@ release:
         scala-cli --power package . --force --output "$osx_out"
         smoke_test "$osx_out"
         linux_out="out/jevvy-linux-x64-v${VERSION}-bin"
-        docker build --platform linux/amd64 -f docker/linux.Dockerfile -t jevvy-linux-build .
+        just docker-linux-build
         cid="$(docker create jevvy-linux-build)"
         docker cp "$cid:/jevvy" "$linux_out"
         docker rm "$cid" >/dev/null

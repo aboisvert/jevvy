@@ -168,6 +168,8 @@ just release
 
 On **macOS arm64**, this writes `out/jevvy-osx-arm64-v<VERSION>-bin` on the host and `out/jevvy-linux-x64-v<VERSION>-bin` via Docker (`linux/amd64`; requires Docker Desktop with enough memory). On **Linux x86_64**, only the Linux binary is built. Other platforms are rejected.
 
+The Linux Docker build (`just docker-linux-build`) bind-mounts your host Coursier and Scala CLI caches via Docker [additional build contexts](https://docs.docker.com/build/building/context/#additional-build-contexts) (macOS: `~/Library/Caches/Coursier` and `~/Library/Caches/ScalaCli`; Linux: `~/.cache/coursier` and `~/.cache/scala-cli`) so Maven artifacts and JVMs are reused across releases. Override with `COURSIER_CACHE_HOST` or `SCALA_CLI_CACHE_HOST` if needed. A separate BuildKit cache keeps `.scala-build` state between builds.
+
 Built with [scala-jev-sdk](https://github.com/ticofab/scala-jev-sdk) on Scala 3.
 
 ## Related links
