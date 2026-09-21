@@ -51,6 +51,8 @@ jevvy --input PATH [--config PATH] [--output PATH] [--concurrency N] [--model NA
 | `--concurrency` | Override YAML `concurrency` |
 | `--model` | Override YAML `model` |
 
+**Row order:** The output CSV keeps the same row order as the input. With `concurrency` greater than 1, rows are processed in parallel, but each result is written in input order (not completion order).
+
 Help:
 
 ```bash
