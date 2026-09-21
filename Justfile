@@ -1,4 +1,4 @@
-# Jev CSV batch CLI — run with `just batch-triage` (requires TYPESAFE_API_KEY in .env)
+# jevvy CSV CLI — run with `just example-triage` (requires TYPESAFE_API_KEY in .env)
 
 set shell := ["sh", "-uc"]
 set dotenv-load := true
@@ -9,22 +9,22 @@ default:
 
 # Show CLI usage
 run:
-    scala-cli run . -- batch --help 2>&1 || scala-cli run .
+    scala-cli run . -- --help 2>&1 || scala-cli run .
 
-_batch *ARGS:
+_run *ARGS:
     scala-cli run . -- {{ARGS}}
 
 # Support triage (choice) example
-batch-triage:
-    just _batch --config examples/support-triage.yaml --input examples/support-triage.csv --output /tmp/jevvy-support-triage-out.csv
+example-triage:
+    just _run --config examples/support-triage.yaml --input examples/support-triage.csv --output /tmp/jevvy-support-triage-out.csv
 
 # Content moderation (noul) example
-batch-moderation:
-    just _batch --config examples/content-moderation.yaml --input examples/content-moderation.csv --output /tmp/jevvy-content-moderation-out.csv
+example-moderation:
+    just _run --config examples/content-moderation.yaml --input examples/content-moderation.csv --output /tmp/jevvy-content-moderation-out.csv
 
 # Lead scoring (score) example
-batch-lead:
-    just _batch --config examples/lead-scoring.yaml --input examples/lead-scoring.csv --output /tmp/jevvy-lead-scoring-out.csv
+example-lead-scoring:
+    just _run --config examples/lead-scoring.yaml --input examples/lead-scoring.csv --output /tmp/jevvy-lead-scoring-out.csv
 
 test:
     scala-cli test .

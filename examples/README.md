@@ -1,4 +1,4 @@
-# Jev batch examples
+# Jev examples
 
 Each scenario matches a [Jev use case](https://jevtypesafeai.com/use-cases). Every CSV row is sent to Jev as a JSON object (column name → string value).
 
@@ -36,4 +36,4 @@ scala-cli run . -- --input examples/lead-scoring.csv
 
 Output columns: `sales_readiness_score`, `sales_readiness_nearest_label`, `jev_error`.
 
-Or use convenience recipes from the repo root: `just batch-triage`, `just batch-moderation`, `just batch-lead`.
+Or use convenience recipes from the repo root: `just example-triage`, `just example-moderation`, `just example-lead-scoring`.

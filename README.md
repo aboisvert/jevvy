@@ -1,6 +1,6 @@
 # jevvy
 
-Batch CSV rows through [Jev](https://docs.typesafe.ai/) with YAML-defined questions. Each row becomes JSON state sent to the TypeSafe API; results are written as extra CSV columns.
+Run CSV rows through [Jev](https://docs.typesafe.ai/) with YAML-defined questions. Each row becomes JSON state sent to the TypeSafe API; results are written as extra CSV columns.
 
 Licensed under the [Apache License, Version 2.0](LICENSE).
 
@@ -18,7 +18,7 @@ Licensed under the [Apache License, Version 2.0](LICENSE).
 echo 'TYPESAFE_API_KEY=your-key-here' > .env
 
 # With just (loads .env automatically)
-just batch-triage
+just example-triage
 
 # Or with Scala CLI directly
 export TYPESAFE_API_KEY=your-key-here
@@ -30,7 +30,7 @@ For `examples/support-triage.csv`, config defaults to `examples/support-triage.y
 ## CLI
 
 ```text
-batch --input PATH [--config PATH] [--output PATH] [--concurrency N] [--model NAME]
+jevvy --input PATH [--config PATH] [--output PATH] [--concurrency N] [--model NAME]
 ```
 
 | Flag | Description |
@@ -44,14 +44,16 @@ batch --input PATH [--config PATH] [--output PATH] [--concurrency N] [--model NA
 Help:
 
 ```bash
-scala-cli run . -- batch --help
+scala-cli run . -- --help
+# After `just native`:
+./out/jevvy --help
 ```
 
 The process exits with code **1** if any row fails or config/IO errors occur.
 
 ## Configuration
 
-YAML defines batch settings and one or more Jev questions. Supported question types: **`noul`**, **`choice`**, and **`score`**.
+YAML defines settings and one or more Jev questions. Supported question types: **`noul`**, **`choice`**, and **`score`**.
 
 Top-level fields (all optional except `questions`):
 
@@ -90,9 +92,9 @@ Details and output column names: [examples/README.md](examples/README.md).
 Convenience recipes:
 
 ```bash
-just batch-triage
-just batch-moderation
-just batch-lead
+just example-triage
+just example-moderation
+just example-lead-scoring
 ```
 
 ## Development

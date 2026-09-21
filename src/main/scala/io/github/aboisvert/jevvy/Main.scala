@@ -8,23 +8,20 @@ import mainargs.{arg, main, ParserForMethods}
 object Main:
 
   def main(args: Array[String]): Unit =
-    val cliArgs = args.toList match
-      case "batch" :: rest => rest.toArray
-      case _               => args
-
-    if cliArgs.isEmpty then
-      System.err.println("Usage: batch --input PATH [--config PATH] [--output PATH] [--concurrency N] [--model NAME]")
+    if args.isEmpty then
+      System.err.println("Usage: jevvy --input PATH [--config PATH] [--output PATH] [--concurrency N] [--model NAME]")
       System.err.println("Example:")
       System.err.println("  scala-cli run . -- --input examples/support-triage.csv")
       sys.exit(1)
-    else ParserForMethods(this).runOrExit(cliArgs.toSeq)
+    else ParserForMethods(this).runOrExit(args.toSeq)
 
   @main(
+    name = "jevvy",
     doc = """Run Jev on each CSV row (row → JSON state) using questions from a YAML config.
             |Config defaults to {input stem}.yaml; output to {input stem}-out.csv.
             |Appends flat result columns plus jev_error. Exit 1 if any row fails."""
   )
-  def batch(
+  def run(
       @arg(doc = "Input CSV path") input: String,
       @arg(doc = "Path to YAML config (default: input stem + .yaml)") config: Option[String] = None,
       @arg(doc = "Output CSV path (default: input stem + -out.csv)") output: Option[String] = None,

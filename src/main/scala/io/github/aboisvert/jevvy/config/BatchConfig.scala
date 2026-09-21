@@ -26,7 +26,7 @@ final case class BatchConfigFile(
     questions: List[QuestionYaml]
 ) derives YamlCodec
 
-/** Resolved settings and SDK question values ready for batch execution. */
+/** Resolved settings and SDK question values ready for execution. */
 final case class LoadedBatchConfig(
     jevConfig: JevConfig,
     concurrency: Int,
