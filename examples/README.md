@@ -9,11 +9,10 @@ Requires `TYPESAFE_API_KEY` in the environment (or `.env` when using `just`).
 Routes inbound support messages to a team.
 
 ```bash
-scala-cli run . -- \
-  --config examples/support-triage.yaml \
-  --input examples/support-triage.csv \
-  --output /tmp/support-triage-out.csv
+scala-cli run . -- --input examples/support-triage.csv
 ```
+
+Writes `examples/support-triage-out.csv` using `examples/support-triage.yaml`. Override paths with `--config` and `--output` if needed.
 
 Output columns appended: `department_choice`, `department_confidence`, `jev_error`.
 
@@ -22,10 +21,7 @@ Output columns appended: `department_choice`, `department_confidence`, `jev_erro
 Estimates whether UGC should be blocked.
 
 ```bash
-scala-cli run . -- \
-  --config examples/content-moderation.yaml \
-  --input examples/content-moderation.csv \
-  --output /tmp/content-moderation-out.csv
+scala-cli run . -- --input examples/content-moderation.csv
 ```
 
 Output columns: `should_block_probability`, `jev_error`.
@@ -35,10 +31,7 @@ Output columns: `should_block_probability`, `jev_error`.
 Scores sales readiness on a cold / warm / hot scale.
 
 ```bash
-scala-cli run . -- \
-  --config examples/lead-scoring.yaml \
-  --input examples/lead-scoring.csv \
-  --output /tmp/lead-scoring-out.csv
+scala-cli run . -- --input examples/lead-scoring.csv
 ```
 
 Output columns: `sales_readiness_score`, `sales_readiness_nearest_label`, `jev_error`.

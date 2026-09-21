@@ -1,4 +1,5 @@
 import batch.BatchRunner
+import cli.BatchPaths
 import config.BatchConfig
 import mainargs.{arg, main, ParserForMethods}
 
@@ -10,28 +11,30 @@ object Main:
       case _               => args
 
     if cliArgs.isEmpty then
-      System.err.println("Usage: batch --config PATH --input PATH --output PATH [--concurrency N] [--model NAME]")
+      System.err.println("Usage: batch --input PATH [--config PATH] [--output PATH] [--concurrency N] [--model NAME]")
       System.err.println("Example:")
-      System.err.println("  scala-cli run . -- --config examples/support-triage.yaml --input examples/support-triage.csv --output out.csv")
+      System.err.println("  scala-cli run . -- --input examples/support-triage.csv")
       sys.exit(1)
     else ParserForMethods(this).runOrExit(cliArgs.toSeq)
 
   @main(
     doc = """Run Jev on each CSV row (row → JSON state) using questions from a YAML config.
+            |Config defaults to {input stem}.yaml; output to {input stem}-out.csv.
             |Appends flat result columns plus jev_error. Exit 1 if any row fails."""
   )
   def batch(
-      @arg(doc = "Path to YAML config") config: String,
       @arg(doc = "Input CSV path") input: String,
-      @arg(doc = "Output CSV path") output: String,
+      @arg(doc = "Path to YAML config (default: input stem + .yaml)") config: Option[String] = None,
+      @arg(doc = "Output CSV path (default: input stem + -out.csv)") output: Option[String] = None,
       @arg(doc = "Override YAML concurrency") concurrency: Option[Int] = None,
       @arg(doc = "Override YAML model") model: Option[String] = None
   ): Unit =
+    val (configPath, inputPath, outputPath) = BatchPaths.resolve(input, config, output)
     val result =
       for
-        file <- BatchConfig.loadFromFile(config)
+        file <- BatchConfig.loadFromFile(configPath)
         loaded <- BatchConfig.resolve(file, concurrency, model)
-        batchResult <- BatchRunner.run(loaded, input, output)
+        batchResult <- BatchRunner.run(loaded, inputPath, outputPath)
       yield batchResult
 
     result match
