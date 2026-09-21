@@ -81,17 +81,9 @@ Per-run model overrides still apply: YAML `model`, then CLI `--model` (see [Conf
 
 ## Configuration
 
-YAML defines settings and one or more Jev questions. Supported question types: **`noul`**, **`choice`**, and **`score`**.
+YAML defines batch settings and one or more Jev questions (`noul`, `choice`, or `score`). Full schema, precedence rules, CSV/state mapping, output columns, and many examples: **[docs/yaml-configuration.md](docs/yaml-configuration.md)**.
 
-Top-level fields (all optional except `questions`):
-
-- `concurrency` — parallel row processing
-- `delay_ms` — delay between requests
-- `model` — Jev model name
-- `timeout_seconds` — per-request timeout
-- `questions` — list of named questions (see examples)
-
-Example skeleton:
+Minimal skeleton:
 
 ```yaml
 concurrency: 2
@@ -103,10 +95,11 @@ questions:
     options:
       - id: billing
         description: Payments and refunds
-      - ...
+      - id: technical
+        description: Bugs and integrations
 ```
 
-See [`examples/`](examples/) for full configs.
+Runnable configs: [`examples/`](examples/).
 
 ## Examples
 
